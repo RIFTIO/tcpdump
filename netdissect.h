@@ -40,6 +40,7 @@
 
 #include <stdarg.h>
 
+#define HAVE_SNPRINTF 1
 #if !defined(HAVE_SNPRINTF)
 int snprintf (char *str, size_t sz, const char *format, ...)
 #ifdef __ATTRIBUTE___FORMAT_OK
@@ -48,6 +49,7 @@ int snprintf (char *str, size_t sz, const char *format, ...)
      ;
 #endif /* !defined(HAVE_SNPRINTF) */
 
+#define HAVE_VSNPRINTF 1
 #if !defined(HAVE_VSNPRINTF)
 int vsnprintf (char *str, size_t sz, const char *format, va_list ap)
 #ifdef __ATTRIBUTE___FORMAT_OK
@@ -56,17 +58,19 @@ int vsnprintf (char *str, size_t sz, const char *format, va_list ap)
      ;
 #endif /* !defined(HAVE_SNPRINTF) */
 
+#define HAVE_STRLCAT 1
 #ifndef HAVE_STRLCAT
 extern size_t strlcat (char *, const char *, size_t);
 #endif
+#define HAVE_STRLCPY 1
 #ifndef HAVE_STRLCPY
 extern size_t strlcpy (char *, const char *, size_t);
 #endif
-
+#define HAVE_STRDUP 1
 #ifndef HAVE_STRDUP
 extern char *strdup (const char *str);
 #endif
-
+#define HAVE_STRSEP 1
 #ifndef HAVE_STRSEP
 extern char *strsep(char **, const char *);
 #endif
@@ -527,4 +531,20 @@ extern int esp_print_decrypt_buffer_by_ikev2(netdissect_options *ndo,
 extern void geonet_print(netdissect_options *ndo,const u_char *eth_hdr,const u_char *geo_pck, u_int len);
 extern void calm_fast_print(netdissect_options *ndo,const u_char *eth_hdr,const u_char *calm_pck, u_int len);
 
+/* tcpdump pkt info */
+/* This structure should be in sync with the rw_pkt_info_s define in rwtypes.h
+ * file */
+typedef struct rwtcpdump_pkt_info_s
+{
+  uint8_t packet_direction;
+  uint8_t packet_type;
+  uint16_t sport;
+  uint16_t dport;
+  uint64_t ip_header;
+  uint32_t fragment;
+} rwtcpdump_pkt_info_t;
+
+extern int rwtcpdump_printf(netdissect_options *ndo, const char *fmt, ...);
+extern void rwtcpdump_ndo_default_print(netdissect_options *ndo, const u_char *bp, u_int length);
+extern void rw_tcpdumplib_print(rwtcpdump_pkt_info_t *pkt_info, const u_char *bp, int len, int verbosity);
 #endif  /* netdissect_h */

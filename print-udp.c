@@ -55,6 +55,10 @@ static const char rcsid[] _U_ =
 #include "nameser.h"
 #include "nfs.h"
 #include "bootp.h"
+#include "rw-vfabric.h"
+
+#include "gtp.h"
+
 
 struct rtcphdr {
 	u_int16_t rh_flags;	/* T:2 P:1 CNT:5 PT:8 */
@@ -644,6 +648,12 @@ udp_print(register const u_char *bp, u_int length,
 			 ISPORT(RADIUS_ACCOUNTING_PORT) ||
 			 ISPORT(RADIUS_NEW_ACCOUNTING_PORT) )
 			radius_print((const u_char *)(up+1), length);
+		else if (ISPORT(GTPV2_C_PORT) ||
+			 ISPORT(GTPV1_U_PORT) ||
+			 ISPORT(GTPV1_C_PORT) ||
+			 ISPORT(GTPV0_PORT) ||
+			 ISPORT(GTPV1_PRIME_PORT) )
+			gtp_print((const u_char *)(up+1), length,sport,dport);
 		else if (dport == HSRP_PORT)
 			hsrp_print((const u_char *)(up + 1), length);
 		else if (ISPORT(LWRES_PORT))
@@ -682,6 +692,10 @@ udp_print(register const u_char *bp, u_int length,
 			otv_print((const u_char *)(up + 1), length);
                 else if (ISPORT(VXLAN_PORT))
 			vxlan_print((const u_char *)(up + 1), length);
+#ifdef RW_VFABRIC_DECODE
+                else if (dport == RW_VIRTUAL_FABRIC_UDP_PORT) 
+			rw_vf_print((const u_char *)(up + 1), length);
+#endif
 		else
 			(void)printf("UDP, length %u",
 			    (u_int32_t)(ulen - sizeof(*up)));

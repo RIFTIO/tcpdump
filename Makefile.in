@@ -48,7 +48,8 @@ INCLS = -I. @V_INCLS@
 DEFS = @DEFS@ @CPPFLAGS@ @V_DEFS@
 
 # Standard CFLAGS
-CFLAGS = @CFLAGS@
+# Remove -DTCPDUMP_BUF flag and build in case tcpdump data should be printed on stdout
+CFLAGS = @CFLAGS@ -DTCPDUMP_BUF
 FULL_CFLAGS = $(CCOPT) $(DEFS) $(INCLS) $(CFLAGS)
 
 # Standard LDFLAGS
@@ -69,7 +70,7 @@ DEPENDENCY_CFLAG = @DEPENDENCY_CFLAG@
 # problem if you don't own the file but can write to the directory.
 .c.o:
 	@rm -f $@
-	$(CC) $(FULL_CFLAGS) -c $(srcdir)/$*.c
+	$(CC) $(FULL_CFLAGS) -c -fPIC $(srcdir)/$*.c
 
 CSRC =	addrtoname.c af.c checksum.c cpack.c gmpls.c oui.c gmt2local.c ipproto.c \
         nlpid.c l2vpn.c machdep.c parsenfsfh.c in_cksum.c \
@@ -96,12 +97,16 @@ CSRC =	addrtoname.c af.c checksum.c cpack.c gmpls.c oui.c gmt2local.c ipproto.c 
 	print-slow.c print-snmp.c print-stp.c print-sunatm.c print-sunrpc.c \
 	print-symantec.c print-syslog.c print-tcp.c print-telnet.c print-tftp.c \
 	print-timed.c print-tipc.c print-token.c print-udld.c print-udp.c \
-	print-usb.c print-vjc.c print-vqp.c print-vrrp.c print-vtp.c \
-	print-wb.c print-zephyr.c print-zeromq.c print-vxlan.c print-otv.c signature.c setsignal.c tcpdump.c util.c
+	print-usb.c print-vjc.c print-vqp.c print-vrrp.c print-vtp.c print-rw-vfabric.c\
+	print-wb.c print-zephyr.c print-zeromq.c print-vxlan.c print-otv.c signature.c setsignal.c tcpdump.c util.c \
+        print-gtp.c print-gtpv2.c
 
 LIBNETDISSECT_SRC=print-isakmp.c
 LIBNETDISSECT_OBJ=$(LIBNETDISSECT_SRC:.c=.o)
 LIBNETDISSECT=libnetdissect.a
+LIBTCPDUMP=libtcpdump.a
+AR=ar
+ARFLAGS=rcu
 
 LOCALSRC = @LOCALSRC@
 GENSRC = version.c
@@ -280,11 +285,16 @@ EXTRA_DIST = \
 
 TEST_DIST= `find tests \( -name 'DIFF' -prune \) -o \( -name NEW -prune \) -o -type f \! -name '.*' \! -name '*~' -print`
 
-all: $(PROG)
+all: $(PROG) $(LIBTCPDUMP)
 
 $(PROG): $(OBJ) @V_PCAPDEP@
 	@rm -f $@
-	$(CC) $(FULL_CFLAGS) $(LDFLAGS) -o $@ $(OBJ) $(LIBS)
+	$(CC) $(FULL_CFLAGS) $(LDFLAGS) -o $@ $(OBJ) $(LIBS) -lpthread
+
+$(LIBTCPDUMP): $(OBJ) @V_PCAPDEP@
+	@rm -f $@
+	$(AR) $(ARFLAGS) $@ $(OBJ) 
+	@cp -f $(LIBTCPDUMP) ../../
 
 $(LIBNETDISSECT): $(LIBNETDISSECT_OBJ)
 	@rm -f $@

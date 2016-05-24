@@ -398,7 +398,9 @@ extern netdissect_options *gndo;
 #define tflag gndo->ndo_tflag 
 #define Uflag gndo->ndo_Uflag 
 #define uflag gndo->ndo_uflag 
+#ifndef TCPDUMP_BUF
 #define vflag gndo->ndo_vflag 
+#endif
 #define xflag gndo->ndo_xflag 
 #define Xflag gndo->ndo_Xflag 
 #define Cflag gndo->ndo_Cflag 

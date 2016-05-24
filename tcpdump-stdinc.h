@@ -277,5 +277,5 @@ typedef char* caddr_t;
 /*
  * end of Apple deprecation workaround macros
  */
-
+#include "tcpdump_export.h"
 #endif /* tcpdump_stdinc_h */

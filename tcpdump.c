@@ -86,6 +86,7 @@ extern int SIZE_BUF;
 #include "setsignal.h"
 #include "gmt2local.h"
 #include "pcap-missing.h"
+#include "tcpdump_export.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 1024
@@ -1059,7 +1060,7 @@ main(int argc, char **argv)
 #endif
 
 		case 'v':
-			++vflag;
+			rwtcpdump_incr_vflag(1);
 			break;
 
 		case 'V':
@@ -2175,4 +2176,120 @@ ndo_warning(netdissect_options *ndo _U_, const char *fmt, ...)
 		if (fmt[-1] != '\n')
 			(void)fputc('\n', stderr);
 	}
+}
+
+#include <pthread.h>
+
+int rwtcpdump_printf_override(const char *__restrict fmt,...) {
+  int count;
+  va_list ap;
+  rwtcpdump_state_t *rwtcpdump_state;
+  va_start(ap, fmt);
+  if ((rwtcpdump_state = (rwtcpdump_state_t *)pthread_getspecific(log_print_key)) != NULL) {
+     count = vsnprintf(rwtcpdump_state->tcpdump_out_buf+(rwtcpdump_state->write_count%4096),
+                     4096-(rwtcpdump_state->write_count%4096), fmt, ap);
+    if (count > 0) {
+      rwtcpdump_state->write_count+= count;
+    }
+  } else {
+    count = vfprintf (stdout, fmt, ap);
+  }
+
+  va_end(ap);
+  return count;
+}
+
+int rwtcpdump_get_vflag() {
+  rwtcpdump_state_t *rwtcpdump_state;
+  if ((rwtcpdump_state = (rwtcpdump_state_t *)pthread_getspecific(log_print_key)) != NULL) {
+    return rwtcpdump_state->verbosity;
+  } else {
+    return gndo->ndo_vflag;
+  }
+}
+
+void rwtcpdump_decr_vflag(int dec_verbosity) {
+  rwtcpdump_state_t *rwtcpdump_state;
+  if ((rwtcpdump_state = (rwtcpdump_state_t *)pthread_getspecific(log_print_key)) != NULL) {
+    if (rwtcpdump_state->verbosity > dec_verbosity) {
+      rwtcpdump_state->verbosity -= dec_verbosity;
+    } else {
+      rwtcpdump_state->verbosity = 0;
+    }
+  } else {
+    if (gndo->ndo_vflag > dec_verbosity) {
+      gndo->ndo_vflag -= dec_verbosity;
+    } else {
+      gndo->ndo_vflag = 0;
+    }
+  }
+}
+
+void rwtcpdump_incr_vflag(int inc_verbosity) {
+  rwtcpdump_state_t *rwtcpdump_state;
+  if ((rwtcpdump_state = (rwtcpdump_state_t *)pthread_getspecific(log_print_key)) != NULL) {
+    rwtcpdump_state->verbosity += inc_verbosity;
+  } else {
+    gndo->ndo_vflag += inc_verbosity;
+  }
+}
+
+int rwtcpdump_printf(netdissect_options *ndo, const char *fmt, ...)
+{
+
+  va_list ap;
+  int count;
+  rwtcpdump_state_t *rwtcpdump_state;
+  va_start(ap, fmt);
+  if ((rwtcpdump_state = (rwtcpdump_state_t *)pthread_getspecific(log_print_key)) != NULL) {
+     count = vsnprintf(rwtcpdump_state->tcpdump_out_buf+(rwtcpdump_state->write_count%4096),
+                     4096-(rwtcpdump_state->write_count%4096), fmt, ap);
+    if (count > 0) {
+      rwtcpdump_state->write_count+= count;
+    }
+  } else {
+    count = vfprintf(stdout, fmt, ap);
+  }
+  va_end(ap);
+
+  return count;
+}
+
+void
+rwtcpdump_ndo_default_print(netdissect_options *ndo, const u_char *bp, u_int length)
+{
+  hex_and_ascii_print("\n\t", bp, length); /* pass on lf and identation string */
+}
+
+void
+rw_tcpdumplib_print(rwtcpdump_pkt_info_t *pkt_info, const u_char *bp, int len, int verbosity)
+{
+  gndo->ndo_snapend = ((u_char *)bp + len + 1);
+  gndo->ndo_vflag = verbosity;
+  switch (pkt_info->packet_direction) {
+  case 0: printf("INBOUND >> ");
+          break;
+  case 1: printf("OUTBOUND << ");
+          break;
+  }
+
+  switch(pkt_info->packet_type) {
+  case 0: ip_print(gndo, (u_char *)bp, len);
+          break;
+
+  case 1: tcp_print((u_char *)bp, len, (const u_char *)pkt_info->ip_header, pkt_info->fragment);
+  break;
+
+  case 2: udp_print((u_char *)bp, len, (const u_char *)pkt_info->ip_header, pkt_info->fragment);
+  break;
+
+  case 3: ether_print(gndo, (u_char *)bp, len, len, NULL, NULL);
+  break;
+
+  case 4: gtp_print((u_char *)bp, len, pkt_info->sport, pkt_info->dport);
+  break;
+
+  default:
+          return;
+  }
 }
