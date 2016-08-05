@@ -294,7 +294,6 @@ $(PROG): $(OBJ) @V_PCAPDEP@
 $(LIBTCPDUMP): $(OBJ) @V_PCAPDEP@
 	@rm -f $@
 	$(AR) $(ARFLAGS) $@ $(OBJ) 
-	@cp -f $(LIBTCPDUMP) ../../
 
 $(LIBNETDISSECT): $(LIBNETDISSECT_OBJ)
 	@rm -f $@
